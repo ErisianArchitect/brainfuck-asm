@@ -1,0 +1,58 @@
+macro comment? ender
+    macro ?! line&
+        if `line = `ender
+            purge ?
+        end if
+    end macro
+end macro
+
+macro save name, regs&
+    iterate value, regs
+        push value
+    end iterate
+    macro restore.#name
+        purge restore.#name
+        iterate value, regs
+            indx 1+%%-%
+            pop value
+        end iterate
+    end macro
+end macro
+
+macro layout name, alignment:0, offset:0
+    macro name#.stalloc reg
+        push qword 0
+        save name#.stalloc.registers, rax, rbx, rcx
+            lea rax, [rsp+32]
+            ; add rax, 32                ;--- Bring stack pointer to location before saving registers.
+            mov rcx, rax               ;--- Save stack pointer again to work on rax to get alignment offset.
+            sub rax, name#.sizeof
+            mov rbx, alignment
+            sub rbx, 1
+            neg rax
+            and rax, rbx
+            mov rbx, rcx
+            sub rbx, rax
+            sub rbx, name.#sizeof
+            mov [rcx-8], rbx
+        restore.name#.stalloc.registers
+        pop rsp
+        match any, reg
+            mov reg, rsp
+        end match
+    end macro
+    macro valloc
+        align alignment
+        name: db name#.sizeof
+        align alignment
+    end macro
+    virtual at offset
+    namespace name
+        start:
+end macro
+
+macro end?.layout!
+        sizeof = $
+    end namespace
+    end virtual
+end macro

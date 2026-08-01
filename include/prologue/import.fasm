@@ -1,0 +1,44 @@
+;---
+; Macros:
+;     import import_name
+;     import import_name as alt_name
+;     import from import_name
+; Example `import_name`s and their import path:
+;     common ----- 'include/common.fasm'
+;     constants -- 'include/constants.fasm'
+;     ext -------- 'include/ext.fasm'
+;     function --- 'include/function.fasm'
+;     guard  ----- 'include/guard.fasm'
+;     hex -------- 'include/hex.fasm'
+;     printing --- 'include/printing.fasm'
+;     region ----- 'include/region.fasm'
+;     string ----- 'include/string.fasm'
+;     syscalls --- 'include/syscalls.fasm'
+;     vte -------- 'include/vte.fasm'
+;---
+
+if ~ definite ____IMPORT_REAL_GUARD__
+____IMPORT_REAL_GUARD__ = 1
+    macro import: name*&
+        match =from imp_name, name
+            if ~ definite IMPORT_GUARDS.#imp_name
+            IMPORT_GUARDS.#imp_name = 1
+                include 'include/' bappend `imp_name bappend '.fasm'
+            end if
+        else match imp_name =as alt_name, name
+            if ~ definite IMPORT_GUARDS.#imp_name
+            IMPORT_GUARDS.#imp_name = 1
+                namespace #alt_name
+                    include 'include/' bappend `imp_name bappend '.fasm'
+                end namespace
+            end if
+        else match imp_name, name
+            if ~ definite IMPORT_GUARDS.#imp_name
+            IMPORT_GUARDS.#imp_name = 1
+                namespace #imp_name
+                    include 'include/' bappend `imp_name bappend '.fasm'
+                end namespace
+            end if
+        end match
+    end macro
+end if

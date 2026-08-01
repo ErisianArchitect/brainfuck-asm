@@ -1,0 +1,131 @@
+; <fasmg/packages/utility/align.inc:1>
+include './fasmg/packages/x86/include/cpu/x64.inc'
+include './fasmg/packages/utility/align.inc'
+use64
+
+label interp
+
+; macro isa
+;     macro !?, line&
+;         match =end =isa, line
+;             purge !?
+;             interp.chunks:
+;             irp line, isa_line
+                
+;             end irp
+;         else
+;             isa_line equ line
+;         end match
+;     end macro
+; end macro
+
+
+macro isa
+    macro ?! line&
+        match =end =isa, line
+            purge ?
+            interp.instructions = $
+            namespace isa.instructions
+                irpv line1, code_lines
+                    line1
+                end irpv
+            end namespace
+            interp.instructions.end = $
+            interp.inst_offset = interp.instructions
+            interp.chunk_count = 0
+            interp.chunks = $
+            namespace isa.chunks
+                irpv line2, interp_lines
+                    match label_name =:, line2
+                        ; Tells interpreter that there is a chunk here.
+                        ; If this were 0 instead of 1, the reader would
+                        ; stop reading.
+                        db 1
+                        interp.backtrack = $
+                        db 0
+                        interp.text_start = $
+                        db `label_name, ':'
+                        interp.text_end = $
+                        db 0
+                        store interp.text_end - interp.text_start : byte at interp.backtrack
+                        dd interp.inst_offset
+                        dd interp.inst_offset
+                        interp.chunk_count = interp.chunk_count + 1
+                    else
+                        interp.inst_start = interp.inst_offset
+                        virtual at interp.inst_offset
+                            line2
+                            interp.inst_offset = $
+                        end virtual
+                        interp.inst_end = interp.inst_offset
+
+                        ; Tells interpreter that there is a chunk here.
+                        ; If this were 0 instead of 1, the reader would
+                        ; stop reading.
+                        db 1
+                        interp.backtrack = $
+                        db 0
+                        interp.text_start = $
+                        db `line2
+                        interp.text_end = $
+                        db 0
+                        store interp.text_end - interp.text_start : byte at interp.backtrack
+                        dd interp.inst_start
+                        dd interp.inst_end
+                        interp.chunk_count = interp.chunk_count + 1
+                    end match
+                end irpv
+            end namespace
+            ; EOF
+            dd 0
+            interp.chunks.end = $
+            align 32
+            dd interp.instructions
+            dd interp.instructions.end
+            dd interp.chunks
+            dd interp.chunks.end
+            
+            dd interp.chunk_count
+            dd 0xDEADBEEF
+            dd 0xDEADBEEF
+            dd 0xDEADBEEF
+        else match =__label rest, line
+            code_lines equ rest
+            interp_lines equ line
+        else
+            code_lines equ line
+            interp_lines equ line
+        end match
+    end macro
+end macro
+
+calminstruction foobar
+    arrange output, =inc =rax
+    assemble output
+end calminstruction
+
+calminstruction repeated count*, line*&
+    local index
+    compute index, 0
+loop:
+    check index >= count
+    jyes end_loop
+    arrange output, line
+    assemble output
+    compute index, index + 1
+    jump loop
+end_loop:
+end calminstruction
+
+isa
+    mov rax, rax
+    mov rax, rcx
+    mov rax, rdx
+    mov rax, rbx
+test_label:
+    mov rax, rax
+    mov rcx, rax
+    mov rdx, rax
+    mov rbx, rax
+    jmp test_label
+end isa

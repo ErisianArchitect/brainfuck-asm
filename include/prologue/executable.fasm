@@ -1,0 +1,98 @@
+include './fasmg/packages/x86/include/format/format.inc'
+include './fasmg/packages/utility/align.inc'
+include 'prologue/import.fasm'
+
+import from common
+import from syscalls
+
+format ELF64 executable 3
+; include './fasmg/packages/x86/include/cpu/ext/xsave.inc'
+; include './fasmg/packages/x86/include/cpu/ext/sse.inc'
+; include './fasmg/packages/x86/include/cpu/ext/sse3.inc'
+; include './fasmg/packages/x86/include/cpu/ext/ssse3.inc'
+; include './fasmg/packages/x86/include/cpu/ext/sse4.1.inc'
+include './fasmg/packages/x86/include/cpu/ext/sse4.2.inc'
+
+segment readable writeable
+namespace PROGRAM
+    ; rb (-$) and 7        ;--- Align to 8 bytes
+    align 64
+
+    ;--- Arg Count, Args start (first arg is program name)
+    argc rq 1
+    argv rq 1
+
+    ;--- Environment variable count, environment variables start
+    envc rq 1
+    envp rq 1
+
+    ;--- Ahh, shit, I'm still not entirely sure what this is, but I'm pretty sure it's OS data for the program.
+    auxc rq 1
+    auxv rq 1
+end namespace
+
+macro main
+    if definite MAIN_ENTRY
+        err "Entry main already defined."
+    end if
+    MAIN_ENTRY = 1
+    entry _start
+
+    ;--- Entry header
+    _start:
+        mov rbp, rsp
+        mov rax, [rsp]                 ; argc
+        lea rcx, [rsp+8]               ; argv
+        lea rdx, [rcx+rax*8+8]         ; envp
+
+        mov [PROGRAM.argc], rax
+        mov [PROGRAM.argv], rcx
+        mov [PROGRAM.envp], rdx
+        xor rcx, rcx
+        jmp .envp_count_loop
+    .envp_count_loop.cont:
+        add rdx, 8
+        add rcx, 1
+    .envp_count_loop:
+        ; lea rax, [rdx]
+        mov rax, [rdx]
+        test rax, rax
+        jnz .envp_count_loop.cont
+        mov [PROGRAM.envc], rcx
+        add rdx, 8
+        mov [PROGRAM.auxv], rdx
+        xor rcx, rcx
+        jmp .auxv_count_loop
+    .auxv_count_loop.cont:
+        add rdx, 16
+        add rcx, 1
+    .auxv_count_loop:
+        mov rax, [rdx]
+        test rax, rax
+        jnz .auxv_count_loop.cont
+        mov [PROGRAM.auxc], rcx
+
+        xor rax, rax
+        xor rcx, rcx
+        xor rdx, rdx
+        ;---(TODO): envc, auxc, and auxp
+    ;--- End entry header
+    
+    macro end?.main!
+        purge end?.main
+        purge main
+        .main.exit:
+        .main.exit_success:
+        .main.exit.success:
+            sysexit 0
+        .main.exit_failure:
+        .main.exit.failure:
+            sysexit 1
+    end macro
+end macro
+
+postpone
+    if ~ defined MAIN_ENTRY
+        err "Entry main was not defined."
+    end if
+end postpone

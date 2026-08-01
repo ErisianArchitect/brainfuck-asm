@@ -1,0 +1,73 @@
+label isa.directives
+label isa.has_directive
+
+;--------
+; # FORMAT SPECIFICATION
+; === VERSION[0.1.0]
+; ### Footer
+; 32-byte footer at the end of the file.
+; The footer contains the following information:
+; ```
+; #[repr(C, align(32)]
+; struct Footer {
+;     instruction_start: u32,      (00..04)
+;     instruction_end  : u32,      (04..08)
+;     chunks_start     : u32,      (08..12)
+;     chunks_end       : u32,      (12..16)
+;     chunk_count      : u32,      (16..20)
+;     _reserved        : [u32; 3], (20..32)
+; }
+; ```
+; The section where the instructions are stored starts
+; at  `instruction_start`, and ends at `instruction_end`.
+; The section where the chunks are stored starts
+; at `chunks_start` and ends at `chunks_end`.
+; The chunk_count is provided for your convenience.
+; 12 bytes are reserved for alignment, padding, and
+; future use.
+;
+; ### Chunks
+; Chunks store the source code as text as well as
+; offset information where the machine code is stored.
+; ```
+; struct Chunk {
+;    // This single byte (0x01) is used to specify that this
+;    // chunk has data. If this value were (0x00), then that
+;    // would signify the end of the chunks.
+;    _continue: 1u8,
+;    source_len: u16,
+;    source: str[source_len],
+;    // Null byte for compatibility with C-strings.
+;    _null_end: 0u8,
+;    code_start: u32,
+;    code_end: u32,
+; }
+; ```
+;--------
+
+; So... what the fuck is this going to be for?
+; Perhaps some directives that emit chunks/code in
+; different ways? Yeah, that's a good idea.
+macro isa.directive input*&
+    match name args, input
+        if definite isa.has_directive.#name
+            err "Directive by that name was already defined."
+        end if
+        isa.has_directive.#name = 1
+        esc macro isa.directives.#name args
+    else
+        err "Invalid syntax."
+    end match
+end macro
+
+macro end?.isa.directive!
+    esc end macro
+end macro
+
+isa.directive foobar line&
+    
+end isa.directive
+
+macro isa
+    
+end macro

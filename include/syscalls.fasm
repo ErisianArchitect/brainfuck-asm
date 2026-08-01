@@ -1,0 +1,85 @@
+import from function
+import from region
+
+macro oscall callnum
+    mov rax, callnum
+    syscall
+end macro
+
+;-args(
+;     fd    [rdi]: filedesc,
+;     buf   [rsi]: addr,
+;     size  [rdx]: usize,
+;-)
+macro syswrite
+    oscall 1
+end macro
+
+;-args(
+;     fd    [rdi]: filedesc,
+;     buf   [rsi]: addr,
+;     count [rdx]: usize,
+;-)
+macro sysread
+    oscall 0
+end macro
+
+;-args: I forgor, check https://syscalls.mebeim.net/?table=x86/64/x64/latest
+macro sysstat
+    oscall 4
+end macro
+
+macro sysexit code:0
+    match =rdi, code
+    else
+        mov rdi, code
+    end match
+    oscall 60
+end macro
+
+;--- prot
+PROT_READ   = 0x1
+PROT_WRITE  = 0x2
+PROT_RW     = 0x3
+PROT_EXEC   = 0x4
+PROT_NONE   = 0x0
+;--- flags
+MAP_SHARED  = 0x01
+MAP_PRIVATE = 0x02
+MAP_FIXED   = 0x10
+MAP_ANON    = 0x20
+
+MAP_PRIV_ANON  = 0x00000022
+MAP_HUGETLB    = 0x00040000
+MAP_HUGE_2MB   = 0x54000000
+MAP_PRIV_ANON_HUGE_2MB  = 0x54000022
+
+PAGE_SIZE   = 4096
+
+;--- args(
+;     addr   [rdi]: addr,
+;     len    [rsi]: usize,
+;     prot   [rdx]: u64,
+;     flags  [r10]: u64,
+;     fd     [r8 ]: u64,
+;     offset [r9 ]: u64,
+; )
+macro sysmmap
+    oscall 9
+end macro
+;-args(
+;     filename [rdi]: cstr,
+;     flags    [rsi]: i32,
+;     mode     [rdx]: i16,
+;-)
+macro sysopen
+    oscall 2
+end macro
+
+;--- args(
+;     addr [rdi]: addr,
+;     len  [rsi]: usize,
+; )
+macro sysmunmap
+    oscall 11
+end macro

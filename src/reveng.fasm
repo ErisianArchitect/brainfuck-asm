@@ -1,0 +1,40 @@
+; include './fasmg/packages/x86/include/format/format.inc'
+; include './fasmg/packages/utility/align.inc'
+; <./fasmg/packages/x86/include/cpu/x64.inc:1>
+include './fasmg/packages/x86/include/cpu/x64.inc'
+use64
+
+macro inst name*, inst*&
+    namespace name
+        db text_end - text_begin
+        text_begin:
+            db `inst
+        text_end:
+        db 0
+        db inst_end - inst_begin
+        inst_begin:
+            inst
+        inst_end:
+        dd inst_begin
+        dd inst_end
+    end namespace
+end macro
+
+namespace instructions
+    inst inc_rax, inc rax
+    inst inc_rbi, inc rbx
+    inst inc_rcx, inc rcx
+    inst inc_rdx, inc rdx
+    inst inc_rsi, inc rsi
+    inst inc_rdi, inc rdi
+    inst mov_rax_rax, mov rax, rax
+    inst mov_rax_rbx, mov rax, rbx
+    inst mov_rbx_rax, mov rbx, rax
+    inst mov_rax_rcx, mov rax, rcx
+    inst mov_offset_0, mov rax, [0]
+    inst mov_offset_1, mov rax, [1]
+    ; inst hmm, mov rax, rax
+    inst nop_0, nop
+    inst mov_offset_2, mov rax, [2]
+
+end namespace
