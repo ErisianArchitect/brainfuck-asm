@@ -1,3 +1,8 @@
+include './fasmg/packages/x86/include/cpu/x64.inc'
+include './fasmg/packages/utility/align.inc'
+use64
+
+
 label isa.directives
 label isa.has_directive
 
@@ -13,9 +18,8 @@ label isa.has_directive
 ;     instruction_start: u32,      (00..04)
 ;     instruction_end  : u32,      (04..08)
 ;     chunks_start     : u32,      (08..12)
-;     chunks_end       : u32,      (12..16)
-;     chunk_count      : u32,      (16..20)
-;     _reserved        : [u32; 3], (20..32)
+;     chunk_count      : u32,      (12..16)
+;     _reserved        : [u32; 4], (16..32)
 ; }
 ; ```
 ; The section where the instructions are stored starts
@@ -31,10 +35,6 @@ label isa.has_directive
 ; offset information where the machine code is stored.
 ; ```
 ; struct Chunk {
-;    // This single byte (0x01) is used to specify that this
-;    // chunk has data. If this value were (0x00), then that
-;    // would signify the end of the chunks.
-;    _continue: 1u8,
 ;    source_len: u16,
 ;    source: str[source_len],
 ;    // Null byte for compatibility with C-strings.
@@ -45,29 +45,85 @@ label isa.has_directive
 ; ```
 ;--------
 
-; So... what the fuck is this going to be for?
-; Perhaps some directives that emit chunks/code in
-; different ways? Yeah, that's a good idea.
-macro isa.directive input*&
-    match name args, input
-        if definite isa.has_directive.#name
-            err "Directive by that name was already defined."
-        end if
-        isa.has_directive.#name = 1
-        esc macro isa.directives.#name args
-    else
-        err "Invalid syntax."
-    end match
+macro emit_footer inst_start*, inst_end*, chunks_start*, chunks_end*, chunk_count*
+    align 32
+    dd inst_start
+    dd inst_end
+    dd chunks_start
+    dd chunks_end
+    dd chunk_count
+    dd 0xDEADBEEF
+    dd 0xDEADBEEF
+    dd 0xDEADBEEF
 end macro
 
-macro end?.isa.directive!
-    esc end macro
+macro push_code_line line&
+    isa.code_lines equ line
 end macro
 
-isa.directive foobar line&
-    
-end isa.directive
+macro push_source_line line&
+    isa.source_lines equ line
+end macro
+
+macro emit_chunk code_start*, code_end*, source&
+    local source_len
+    virtual at 0
+        db `source
+        source_len = $
+    end virtual
+    dw source_len
+    db `source
+    db 0
+    dd code_start
+    dd code_end
+end macro
 
 macro isa
-    
+    macro ?! line&
+        match =end =isa, line
+            purge ?
+            isa.code_start = $
+            irpv code_line, isa.code_lines
+                code_line
+            end irpv
+            isa.code_end = $
+            isa.chunks_start = $
+            isa.chunk_count = 0
+            isa.inst_offset = isa.code_start
+            irpv source_line, isa.source_lines
+                match label_name =:, source_line
+                    emit_chunk isa.inst_offset, isa.inst_offset, source_line
+                else
+                    virtual at isa.inst_offset
+                        isa.inst_start = $
+                        source_line
+                        isa.inst_end = $
+                        isa.inst_offset = $
+                    end virtual
+                    emit_chunk isa.inst_start, isa.inst_end, source_line
+                end match
+                isa.chunk_count = isa.chunk_count + 1
+            end irpv
+            isa.chunks_end = $
+            emit_footer isa.code_start, isa.code_end, isa.chunks_start, isa.chunks_end, isa.chunk_count
+        else match , line
+        else match inst rest, line
+            if definite isa.has_directive.#inst
+                line
+            else
+                push_code_line line
+                push_source_line line
+            end if
+        else match inst, line
+            if definite isa.has_directive.#inst
+                line
+            else
+                push_code_line line
+                push_source_line line
+            end if
+        else
+            push_code_line line
+            push_source_line line
+        end match
+    end macro
 end macro

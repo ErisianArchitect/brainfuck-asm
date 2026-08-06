@@ -116,7 +116,7 @@ loop:
     jump loop
 end_loop:
 end calminstruction
-
+err "WHAT THE FUCK?"
 isa
     mov rax, rax
     mov rax, rcx

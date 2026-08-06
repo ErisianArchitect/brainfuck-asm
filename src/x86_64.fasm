@@ -1,0 +1,22 @@
+include 'isa.fasm'
+
+;---
+; Brainfuck Program Register Allocation:
+; reg     Tape Pointer
+; reg     Tape Offset
+; reg     
+;---
+
+isa
+entry_point:
+    mov rax, rax
+    mov rax, rbx
+    jmp entry_point
+    jmp 0x7FFFFFFF
+    mov rax, [rax]
+    mov rax, [rcx]
+    mov rax, [rdx]
+    mov rax, [rbx]
+    syscall
+    ret
+end isa
