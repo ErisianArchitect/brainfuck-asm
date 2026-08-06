@@ -18,8 +18,9 @@ label isa.has_directive
 ;     instruction_start: u32,      (00..04)
 ;     instruction_end  : u32,      (04..08)
 ;     chunks_start     : u32,      (08..12)
-;     chunk_count      : u32,      (12..16)
-;     _reserved        : [u32; 4], (16..32)
+;     chunks_end       : u32       (12..16)
+;     chunk_count      : u32,      (16..20)
+;     _reserved        : [u32; 3], (20..32)
 ; }
 ; ```
 ; The section where the instructions are stored starts
