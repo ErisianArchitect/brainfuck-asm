@@ -1,1 +1,12 @@
+import from error
+import from core.struct
 
+segment readable
+
+test_error error 1, "This is a test."
+
+segment readable executable
+
+main
+    test_error.exit
+end main

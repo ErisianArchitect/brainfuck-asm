@@ -1,0 +1,134 @@
+
+;---
+; core.struct
+;---
+
+label core.struct
+;--- Types are just built in primitive types like i64, i32, etc.
+label core.struct.types
+label core.struct.primitives
+label core.struct.primitive_exists
+;--- Directives are for macros that can be called from inside of a struct definition
+label core.struct.directives
+;--- To store flags for directives that exist.
+;--- Example for directive_exists:
+; core.struct.directive_exists.foobar = 1
+; if definite core.struct.directive_exists.foobar
+;    display "foobar", 10
+; end if
+label core.struct.directive_exists
+
+macro core.struct.primitive input&
+    match t_name=( t_size=, t_alignment =), input
+        core.struct.primitive_exists.#t_name = 1
+        namespace core.struct.primitives.#t_name
+            size = t_size
+            alignment = t_align
+        end namespace
+    else match t_name=(t_size_align), input
+        core.struct.primitive_exists.#t_name = 1
+        namespace core.struct.primitives.#t_name
+            size = t_size_align
+            alignment = t_size_align
+        end namespace
+    else
+        err "Expected something like i32(size, align)".
+    end match
+end macro
+
+core.struct.primitive bool(1)
+core.struct.primitive i8(1)
+core.struct.primitive i16(2)
+core.struct.primitive i32(4)
+core.struct.primitive i64(8)
+core.struct.primitive i128(16)
+core.struct.primitive i256(32)
+core.struct.primitive i512(64)
+core.struct.primitive f16(2)
+core.struct.primitive f32(4)
+core.struct.primitive f64(8)
+
+purge core.struct.primitive
+
+calminstruction struct.directive input&
+    match macro_name:name(args), input, :
+    jyes with_parens
+    match macro_name:name=(=), input, :
+    jyes with_parens_no_args
+    match macro_name:name, input, :
+    jyes only_name
+    stringify input
+    compute err_text, "Invalid syntax" bappend input
+    err err_text
+with_parens:
+    arrange output, =core.=struct.=directive_exists.macro_name == =1
+    assemble output
+    arrange output, =macro =core.=struct.=directives.macro_name =input&
+    assemble output
+    arrange output,     =match ==( =args ==)=, =input
+    assemble output
+    arrange output,         =core.=struct.=directives.macro_name.=real =args
+    assemble output
+    arrange output,     =else
+    assemble output
+    arrange output,         =err "Expected parentheses."
+    assemble output
+    arrange output,     =end =match
+    assemble output
+    arrange output, =end =macro
+    assemble output
+    arrange output, =macro =core.=struct.=directives.macro_name.=real args
+    assemble output
+    exit
+with_parens_no_args:
+    arrange output, =core.=struct.=directive_exists.macro_name == =1
+    assemble output
+    arrange output, =macro =core.=struct.=directives.macro_name =input&
+    assemble output
+    arrange output,     =match ==( ==)=, =input
+    assemble output
+    arrange output,         =core.=struct.=directives.macro_name.=real
+    assemble output
+    arrange output,     =else
+    assemble output
+    arrange output,         =display ="Unexpected input: " =, =`=input=, =10
+    assemble output
+    arrange output,         =err "Expected parentheses."
+    assemble output
+    arrange output,     =end =match
+    assemble output
+    arrange output, =end =macro
+    assemble output
+    arrange output, =macro =core.=struct.=directives.macro_name.=real
+    assemble output
+    exit
+only_name:
+    arrange output, =core.=struct.=directive_exists.macro_name == =1
+    assemble output
+    arrange output, =macro =core.=struct.=directives.macro_name
+    assemble output
+    exit
+end calminstruction
+
+macro end?.struct.directive!
+    esc end macro
+end macro
+
+struct.directive foo
+    display "foo directive", 10
+end struct.directive
+
+macro struct name*
+    macro ?! line&
+        match =end =struct, line
+            purge ?
+            ;-- Do other stuff...
+        else
+            
+        end match
+    end macro
+end macro
+
+struct foobar
+    ;--- We need types.
+end struct

@@ -2,10 +2,47 @@ include 'isa.fasm'
 
 ;---
 ; Brainfuck Program Register Allocation:
-; reg     Tape Pointer
-; reg     Tape Offset
-; reg     
+; r13     Tape Pointer
+; r14d    Tape Offset
+; r15b    Tape Value
 ;---
+; Brainfuck instructions/optimizables
+; Reset Tape Value:
+; ```
+; [-] or [+]
+; ```
+; Repeat Instructions:
+; ```
+; ++++---  | add 4 sub 3 | add 1
+; >>><<    | shr 3 shl 2 | shr 1
+; ```
+; Print until nul:
+; ````
+; [.>]
+; ````
+; Find null:
+; ````
+; [>] or [<] or [>>] or [<<] etc
+; ````
+; Reset until null:
+; ````
+; [[-]>] or [[+]<]
+; ````
+; Swap Cell
+; ````
+; [->+<] or [-<+>]
+; ````
+; Set Cell
+; ````
+; [-]+++++
+; ````
+; Train
+; (start on cell you would like to move, move left/right, add number of jumps, then the jump stride)
+; Stride: 5
+;  Count: 5
+; ````           MCCCCCC CM MC SSSS SSSS     C
+; :move this cell:>+++++[-<[-> >>>>+<<<< <]>[- >>>>+<<<<]>>>>]
+; ````
 
 isa
 entry_point:

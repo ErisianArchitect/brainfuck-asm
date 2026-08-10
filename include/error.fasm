@@ -1,0 +1,34 @@
+
+struc (name) error exit_code*, content*&
+    name:
+        .start:
+        db 0x1b, "[38;2;255;0;0mError", 0x1b, "[39m: ", content, 10
+        .end:
+        .len = .end - .start
+        db 0  ;--- Null terminator.
+
+    macro name.print
+        push rdi
+        push rsi
+        push rdx
+        push rax
+        mov rdi, 2
+        mov rsi, name
+        mov rdx, name.len
+        mov rax, 1
+        syscall
+        pop rax
+        pop rdx
+        pop rsi
+        pop rdi
+    end macro
+
+    macro name.exit
+        name.print
+        mov rdi, exit_code
+        mov rax, 60
+        syscall
+    end macro
+end struc
+
+
