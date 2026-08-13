@@ -6,18 +6,15 @@ import from common
 import from syscalls
 
 format ELF64 executable 3
-; include './fasmg/packages/x86/include/cpu/ext/xsave.inc'
-; include './fasmg/packages/x86/include/cpu/ext/sse.inc'
-; include './fasmg/packages/x86/include/cpu/ext/sse3.inc'
-; include './fasmg/packages/x86/include/cpu/ext/ssse3.inc'
-; include './fasmg/packages/x86/include/cpu/ext/sse4.1.inc'
+include './fasmg/packages/x86/include/cpu/ext/xsave.inc'
+include './fasmg/packages/x86/include/cpu/ext/sse.inc'
+include './fasmg/packages/x86/include/cpu/ext/sse3.inc'
+include './fasmg/packages/x86/include/cpu/ext/ssse3.inc'
+include './fasmg/packages/x86/include/cpu/ext/sse4.1.inc'
 include './fasmg/packages/x86/include/cpu/ext/sse4.2.inc'
 
 segment readable writeable
 namespace PROGRAM
-    ; rb (-$) and 7        ;--- Align to 8 bytes
-    align 64
-
     ;--- Arg Count, Args start (first arg is program name)
     argc rq 1
     argv rq 1
@@ -75,7 +72,6 @@ macro main
         xor rax, rax
         xor rcx, rcx
         xor rdx, rdx
-        ;---(TODO): envc, auxc, and auxp
     ;--- End entry header
     
     macro end?.main!

@@ -1,3 +1,4 @@
+import from syscalls
 
 struc (name) error exit_code*, content*&
     name:
@@ -15,8 +16,7 @@ struc (name) error exit_code*, content*&
         mov rdi, 2
         mov rsi, name
         mov rdx, name.len
-        mov rax, 1
-        syscall
+        sys.write
         pop rax
         pop rdx
         pop rsi
@@ -24,10 +24,12 @@ struc (name) error exit_code*, content*&
     end macro
 
     macro name.exit
-        name.print
+        mov rdi, 2
+        mov rsi, name
+        mov rdx, name.len
+        sys.write
         mov rdi, exit_code
-        mov rax, 60
-        syscall
+        sys.exit
     end macro
 end struc
 

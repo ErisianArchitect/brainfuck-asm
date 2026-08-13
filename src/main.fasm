@@ -1,12 +1,142 @@
 import from error
 import from core.struct
+import from function
 
 segment readable
 
 test_error error 1, "This is a test."
+not_equal error 2, "Values were not equal."
 
 segment readable executable
 
+enum fnord
+    foo = 1
+    bar = 2
+    baz = 4
+    foobar = 3
+    foobaz = 5
+    barbaz = 6
+end enum
+
 main
-    test_error.exit
+    mov rcx, fnord.foo
+    cmp rcx, 1
+    jne .on_error
+    mov rcx, fnord.bar
+    cmp rcx, 2
+    jne .on_error
+    mov rcx, fnord.baz
+    cmp rcx, 4
+    jne .on_error
+    mov rcx, fnord.foobar
+    cmp rcx, 3
+    jne .on_error
+    mov rcx, fnord.foobaz
+    cmp rcx, 5
+    jne .on_error
+    mov rcx, fnord.barbaz
+    cmp rcx, 6
+    jne .on_error
+.on_success:
+    mov rdi, 0
+    sys.exit
+.on_error:
+    not_equal.exit
 end main
+
+namespace data
+    virtual at 0
+        ptr dq ?
+        len dq ?
+        sizeof = $
+    end virtual
+end namespace
+
+;-args(
+;     [rdi]dest: *data
+;     [rsi]filename: cstr
+;-)
+;-return: [rax] 0 on success, -1 on error
+func load_file
+    
+.return:
+    return
+end func.load_file
+
+;--- STEPS:
+; - The idea is that you should stat the brainfuck file to get its size
+; - Once you have the size, you pad it to the next multiple of 4096 (the page size)
+; - Allocate memory using `mapbig` function for the file contents
+; - Read file contents into allocated memory (source code)
+; - Translate source code into bytecode (where non-opcodes are removed and opcodes are translated into 0-indexed values)
+; - Translate bytecode into Level1 IR (pure instruction representation, basically 1:1 translation from bytecode, but with extended data that will be filled in further passes, and certain repeat instructions are merged)
+; - Translate Level1 IR into Level2 IR (optimized instructions representation, turning things like `[-]` into a single cell clear instruction.)
+; - Virtual emit of instructions while filling information into the Level2 IR such as jump offsets.
+; - Now that Level2 IR has offset information, re-emit instructions with offset information filled.
+; - (Fill unfilled code section with ret instructions, which are only a single byte)
+; - Allocate 4GiB (4GiB aligned) for the tape. No edge protection needed, as the tape offset will be 32-bit.
+; - call "function" created by instructions that were emitted.
+; - After function return, print success message and exit.(Add new line before success message just in case there wasn't one added by print instructions)
+;--- NOTES:
+
+;-args(
+;     page_aligned_size [rdi]: usize,
+;     prot [rsi]: PROT,
+;-)
+;--- CLOBBERS [rdi, rsi, rdx, r10, r8, r9, rcx, r11]
+;--- return [rax]: addr
+func mapbig
+    mov rdx, rsi
+    mov rsi, rdi
+    clr rdi
+    ; mov rdx, PROT_WRITE or PROT_READ
+    mov r10, MAP_PRIVATE or MAP_ANON
+    mov r8, -1
+    clr r9
+    sysmmap
+    return no reset
+end func.mapbig
+
+;   struct stat {
+;   	unsigned long	st_dev;		/* Device.  */
+;   	unsigned long	st_ino;		/* File serial number.  */
+;   	unsigned int	st_mode;	/* File mode.  */
+;   	unsigned int	st_nlink;	/* Link count.  */
+;   	unsigned int	st_uid;		/* User ID of the file's owner.  */
+;   	unsigned int	st_gid;		/* Group ID of the file's group. */
+;   	unsigned long	st_rdev;	/* Device number, if device.  */
+;   	unsigned long	__pad1;
+;   	long		st_size;	/* Size of file, in bytes.  */
+;   	int		st_blksize;	/* Optimal block size for I/O.  */
+;   	int		__pad2;
+;   	long		st_blocks;	/* Number 512-byte blocks allocated. */
+;   	long		st_atime;	/* Time of last access.  */
+;   	unsigned long	st_atime_nsec;
+;   	long		st_mtime;	/* Time of last modification.  */
+;   	unsigned long	st_mtime_nsec;
+;   	long		st_ctime;	/* Time of last status change.  */
+;   	unsigned long	st_ctime_nsec;
+;   	unsigned int	__unused4;
+;   	unsigned int	__unused5;
+;   };
+
+; layout sys.stat
+;     st_dev          i64    ; 0
+;     st_ino          i64    ; 8
+;     st_nlink        i64    ; 16
+;     st_mode         i32    ; 24
+;     st_uid          i32    ; 28
+;     st_gid          i32    ; 32
+;     __pad0          i32    ; 36
+;     st_rdev         i64    ; 40
+;     st_size         i64    ; 48
+;     st_blksize      i64    ; 56
+;     st_blocks       i64    ; 64
+;     st_atime        i64    ; 72
+;     st_atime_nsec   i64    ; 80
+;     st_mtime        i64    ; 88
+;     st_mtime_nsec   i64    ; 96
+;     st_ctime        i64    ; 104
+;     st_ctime_nsec   i64    ; 112
+;     __unused        i64 3  ; 120
+; end layout ; 144 bytes (multiple of 16)

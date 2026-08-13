@@ -1,10 +1,14 @@
-macro comment? ender
+macro comment? ender:end comment
     macro ?! line&
         if `line = `ender
             purge ?
         end if
     end macro
 end macro
+
+comment -->
+    This is a comment
+-->
 
 macro save name, regs&
     iterate value, regs

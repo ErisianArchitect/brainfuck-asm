@@ -269,7 +269,11 @@ fn main() {
                 for chunk in chunks.iter() {
                     let bg = *alt.alternate();
                     print!("{}", bg.bg_ansi());
-                    print!("{}", chunk.source);
+                    if chunk.source.ends_with(":") {
+                        print!("\x1b[38;2;255;0;0m{}\x1b[39m", chunk.source);
+                    } else {
+                        print!("{}", chunk.source);
+                    }
                     let space_count = source_width - chunk.source.len();
                     emit_spaces(space_count);
                     let range_text = format!("{}..{}", chunk.range.start, chunk.range.end);

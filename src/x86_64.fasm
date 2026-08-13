@@ -5,6 +5,7 @@ include 'isa.fasm'
 ; r13     Tape Pointer
 ; r14d    Tape Offset
 ; r15b    Tape Value
+; al      Tape Value (when available)
 ;---
 ; Brainfuck instructions/optimizables
 ; Reset Tape Value:
@@ -43,17 +44,126 @@ include 'isa.fasm'
 ; ````           MCCCCCC CM MC SSSS SSSS     C
 ; :move this cell:>+++++[-<[-> >>>>+<<<< <]>[- >>>>+<<<<]>>>>]
 ; ````
+; We can also turn repeated `[[[[` into a jump into the inner-most one.
+; ````
+; [[-]>]
+; ````
+; Becomes something like:
+; ````
+; mov al, [r13+r14]
+; .loop_start:
+; dec al
+; test al, al
+; jnz .loop_start
+; inc r14d
+; mov al, [r13+r14]
+; jnz .loop_start
+; ````
+;
+;--- Other Notes
+; # Heuristics
+; You should keep heuristics about what's going
+; on in the code. For example, information about whether
+; or not `al` is currently the active tape value.
+; So at the end of an instruction emission, the compiler
+; should know whether or not al is the active tape value
+; so that it knows whether or not it needs to read the
+; tape value for the next emission.
+; Some of these heuristics can be stored as flags in
+; an available register (that is expected to be used
+; only for these flags during compilation).
+; There should also be a flag that determines whether
+; `al` needs to be committed to [r13+r14], such as
+; before moving the tape, or jumping.
+; # Functions
+; Any functions used within the program should be
+; defined within the machine code that is emitted.
+; Then relative call offsets will be calculated for
+; those functions. This means I will have to keep
+; track of where in memory those functions are stored.
 
+; r13     Tape Pointer
+; r14/d   Tape Offset
+; al      Tape Value (temporary)
+; +,-.<>[]
 isa
-entry_point:
-    mov rax, rax
-    mov rax, rbx
-    jmp entry_point
-    jmp 0x7FFFFFFF
-    mov rax, [rax]
-    mov rax, [rcx]
-    mov rax, [rdx]
-    mov rax, [rbx]
-    syscall
+calls:
+    call rax
+    call rcx
+    call rdx
+    call 0
+    call 1
+    call 2
+    call 0x33
+    call 0xff
+    call 0x333333
+    call 0xffffff
+    call 0x7fffffff
+call64:
+    mov rax, 0xfafafafafafafafa
+    call rax
+read_cell:
+    mov al, [r13+r14]
+commit_cell:
+    mov [r13+r14], al
+addition:
+    mov al, [r13+r14]
+    add al, 33
+    mov [r13+r14], al
+subtraction:
+    mov al, [r13+r14]
+    sub al, 33
+    mov [r13+r14], al
+increment:
+    inc r15b
+    inc al
+    inc cl
+    inc dl
+decrement:
+    dec r15b
+    dec al
+    dec cl
+    dec dl
+add_many:
+    add r15b, 33
+    add al, 33
+    add cl, 33
+    add dl, 33
+sub_many:
+    sub r15b, 33
+    sub al, 33
+    sub cl, 33
+    sub dl, 33
+strlen:
+    xor rax, rax
     ret
+print:
+    ; [.>]<[<]>
+    lea rdi, [r13+r14]
+    call 0xFF00
+    mov rsi, rdi
+    mov rdi, 1
+    mov rdx, rax
+    mov rax, 1
+    syscall
+move_fwd_to_0:
+    ; [>]
+    jmp .fwd_loop
+    .fwd_loop.cont:
+    inc r14d
+    .fwd_loop:
+    mov al, [r13+r14]
+    test al, al
+    jnz .fwd_loop.cont
+    .fwd_loop.end:
+mov_bwd_to_0:
+    ; [<]
+    jmp .bwd_loop
+    .bwd_loop.cont:
+    dec r14d
+    .bwd_loop:
+    mov al, [r13+r14]
+    test al, al
+    jnz .bwd_loop.cont
+    .bwd_loop.end:
 end isa

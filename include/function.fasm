@@ -1,0 +1,23 @@
+macro return reset_stack:reset
+    match =no =reset, reset_stack
+        ;--- Do nothing
+    else match =reset, reset_stack
+        mov rsp, rbp
+    else
+        err "Invalid argument to return"
+    end match
+    pop rbp
+    ret
+end macro
+
+macro func? name
+    name:
+        push rbp
+        mov rbp, rsp
+    macro end?.func.#name! return_cmd&
+        purge end?.func.#name
+        match any, return_cmd
+            return_cmd
+        end match
+    end macro
+end macro

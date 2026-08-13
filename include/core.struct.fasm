@@ -18,19 +18,19 @@ label core.struct.directives
 ; end if
 label core.struct.directive_exists
 
+macro core.struct.make_primitive t_name*, t_size*, t_align*
+    core.struct.primitive_exists.#t_name = 1
+    namespace core.primitives.#t_name
+        size = t_size
+        alignment = t_align
+    end namespace
+end macro
+
 macro core.struct.primitive input&
     match t_name=( t_size=, t_alignment =), input
-        core.struct.primitive_exists.#t_name = 1
-        namespace core.struct.primitives.#t_name
-            size = t_size
-            alignment = t_align
-        end namespace
+        core.struct.make_primitive t_name, t_size, t_align
     else match t_name=(t_size_align), input
-        core.struct.primitive_exists.#t_name = 1
-        namespace core.struct.primitives.#t_name
-            size = t_size_align
-            alignment = t_size_align
-        end namespace
+        core.struct.make_primitive t_name, t_size_align, t_size_align
     else
         err "Expected something like i32(size, align)".
     end match
@@ -124,11 +124,72 @@ macro struct name*
             purge ?
             ;-- Do other stuff...
         else
-            
+            ;--- Expect line such as:
+            ; ```
+            ; name type
+            ; or
+            ; name type[array_len]
+            ; ```
+            ; hmm... I'm not exactly sure what would be the best
+            ; way to allocate virtual space for an array. I suppose
+            ; by adding a multiple of the size.
+            ;
+            ; Essentially, what needs to happen is there needs to be a registry of "types",
+            ; and that registry needs to contain the primitive types as well as the types
+            ; created by the `struct` and `union` macros.
         end match
     end macro
 end macro
 
-struct foobar
-    ;--- We need types.
-end struct
+if ~ definite core
+    label core
+end if
+label core.struct.enum_builder
+core.struct.enum_builder.index = 0
+
+macro enum name*
+    core.struct.enum_builder.index = 0
+    esc namespace name
+    macro ?! line&
+        match =end =enum, line
+            purge ?
+            esc end namespace
+        else match variant_name == value, line
+            variant_name = value
+            core.struct.enum_builder.index = value + 1
+        else match variant_name, line
+            variant_name = core.struct.enum_builder.index
+            core.struct.enum_builder.index = core.struct.enum_builder.index + 1
+        else
+            err "Invalid input."
+        end match
+    end macro
+end macro
+
+comment -->
+    ;---
+    ; It should be noted that `struct` and `union` are being designed for stack
+    ; and in-memory usage, but not necessarily for static memory.
+    union foo_and_bar ;-- size:8, align:8
+        foo: i32 ;-- 0..4
+        bar: i64 ;-- 0..8
+    end union
+
+    struct range
+        start: i32
+        end:   i32
+    end struct
+
+    struct foobar
+        foo:    i32          ;-- 0..4
+        bar:    i64          ;-- 8..16 greatest alignment (8)
+        baz:    i8[2]        ;-- 16..18
+        foobar: foo_and_bar  ;-- 24..32
+        range:  range        ;-- 32..40
+    end struct
+    foobar.foobar.foo ;-- 24
+    foobar.foobar.bar ;-- 24
+    foobar.baz        ;-- 16
+    foobar.foo.st.put eax
+    foobar.range.start.st.put rcx
+-->
