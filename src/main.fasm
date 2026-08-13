@@ -88,11 +88,11 @@ end func.load_file
 func mapbig
     mov rdx, rsi
     mov rsi, rdi
-    clr rdi
+    xor rdi, rdi
     ; mov rdx, PROT_WRITE or PROT_READ
     mov r10, MAP_PRIVATE or MAP_ANON
     mov r8, -1
-    clr r9
+    xor r9, r9
     sysmmap
     return no reset
 end func.mapbig

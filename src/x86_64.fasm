@@ -86,7 +86,30 @@ include 'isa.fasm'
 ; r14/d   Tape Offset
 ; al      Tape Value (temporary)
 ; +,-.<>[]
+some_string_ptr = 0xEFBEADDE
+some_string_length = 420
 isa
+example:
+some_function:
+    mov rdi, 1 ; Set file descriptor to stdout
+    mov rsi, 0xEFBEADDE ; Set buffer address to some string pointer
+    mov rdx, 420 ; set the length of the string
+    mov rax, 1 ; set the syscall number to 1, for `write`
+    syscall ; kernel syscall
+    ret
+
+main:
+    call some_function
+    mov rdi, 0  ; set exit code to 0
+    mov rax, 60 ; exit syscall number
+    syscall
+scratch:
+    .loopback:
+    jmp .loopback
+    mov [r13+r14], r15b
+    mov r15b, [r13+r14]
+    mov al, [r13+r14]
+    mov [r13+r14], al
 calls:
     call rax
     call rcx
